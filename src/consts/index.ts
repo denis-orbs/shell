@@ -2,7 +2,7 @@ import Api from "../services/Api";
 
 const commandsDictionary: any = {
   ls: async () => {
-    const res = await  Api.excecute("ls");
+    const res = await  Api.excecute("ls");    
     return res
   },
   rm: async (value: string) => {
