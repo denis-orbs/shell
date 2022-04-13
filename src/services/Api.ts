@@ -1,23 +1,24 @@
 import axios from "axios";
-import Cookies from "universal-cookie";
+import fileDownload from "js-file-download";
+import localstorage from "./localstorage";
+import { DIRECTORY_NAME } from "../consts";
 
 const ENDPOINT = process.env.REACT_APP_API_ENDPOINT;
 
-
-const COOKIE = "ton_shell_id";
-
 class Api {
-  async excecute(command: string) {
-    const cookie = await this.getCookie();
+  async excecuteBase(path: string, args: string) {
+    const directoryId = localstorage.getDirectoryId();
+    if (!directoryId) {
+      return;
+    }
     try {
-      console.log(command);
       const res = (
         await axios.post(
-          `${ENDPOINT}/command`,
-          { command },
+          `${ENDPOINT}/${path}`,
+          { args },
           {
             headers: {
-              [COOKIE]: cookie,
+              [DIRECTORY_NAME]: directoryId,
             },
           }
         )
@@ -28,8 +29,33 @@ class Api {
     }
   }
 
+  async runExample() {
+    return this.excecuteBase("run-example", "");
+  }
+
+  async contractCommand(command: string) {
+    console.log(command);
+
+    return this.excecuteBase("contract-command", command);
+  }
+
+  async excecute(command: string) {
+    console.log(command);
+    
+    return this.excecuteBase("command", command);
+  }
+
+  async getFile(fileName: string) {
+    const result = await this.excecuteBase("get-file", fileName);
+
+    return fileDownload(result, fileName);
+  }
+
   async uploadFile(files: File[]) {
-    const cookie = await this.getCookie();
+    const directoryId = localstorage.getDirectoryId();
+    if (!directoryId) {
+      return;
+    }
     const formData = new FormData();
     if (files.length > 1) {
       files.forEach((file) => {
@@ -42,40 +68,26 @@ class Api {
 
     return axios.post(`${ENDPOINT}/upload`, formData, {
       headers: {
-        [COOKIE]: cookie,
+        [DIRECTORY_NAME]: directoryId,
       },
     });
   }
 
-  async getCookie() {
-    const cookie = new Cookies().get(COOKIE);
-    if (!cookie) {
+  async verifyCookie() {
+    const directoryId = localstorage.getDirectoryId();
+    if (!directoryId) {
       const cookie = await axios.get(`${ENDPOINT}/cookie`);
-        
-      new Cookies().set(COOKIE, cookie.data)
-      return cookie.data
+      localstorage.setDirectoryId(cookie.data);
+
+      return cookie.data;
     } else {
-      return cookie
+      return directoryId;
     }
   }
 
-  async getCommands() {
-    const cookie = await this.getCookie();
-    console.log(cookie);
-    
-    try {
-      const result = await axios.get(`${ENDPOINT}/commands`, {
-        headers: {
-          [COOKIE]: cookie,
-        },
-      });
-
-      return result.data;
-    } catch (error) {}
-  }
 
   async deleteFile(fileName: string) {
-    const res = await axios.post(`${ENDPOINT}/delete`, { fileName });
+    return axios.post(`${ENDPOINT}/delete`, { fileName });
   }
 }
 
